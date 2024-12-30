@@ -10182,7 +10182,7 @@ fi
 
 . ${SCRIPTPREFIX:?}/include/colors.pre.sh
 if [ -z "${POUDRIERE_ETC}" ]; then
-	POUDRIERE_ETC=$(realpath ${SCRIPTPREFIX:?}/../../etc)
+	POUDRIERE_ETC="$(realpath '@sysconfdir@')"
 fi
 # If this is a relative path, add in ${PWD} as a cd / is done.
 if [ "${POUDRIERE_ETC#/}" = "${POUDRIERE_ETC}" ]; then
