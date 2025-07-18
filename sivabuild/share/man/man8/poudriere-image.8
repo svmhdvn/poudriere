@@ -1,0 +1,235 @@
+.\" Copyright (c) 2012 Baptiste Daroussin <bapt@FreeBSD.org>
+.\" Copyright (c) 2012-2014 Bryan Drewery <bdrewery@FreeBSD.org>
+.\" Copyright (c) 2018 SRI International
+.\" Copyright (c) 2018-2021 Allan Jude <allanjude@FreeBSD.org>
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD$
+.\"
+.\" Note: The date here should be updated whenever a non-trivial
+.\" change is made to the manual page.
+.Dd April 18, 2023
+.Dt POUDRIERE-IMAGE 8
+.Os
+.Sh NAME
+.Nm "poudriere image"
+.Nd build OS filesystem images
+.Sh SYNOPSIS
+.Nm
+.Fl j Ar name
+.Fl t Ar type
+.Op Ar options
+.Sh DESCRIPTION
+Builds a filesystem image per the specified options.
+.Pp
+WARNING: This feature is still considered ALPHA.
+.Sh OPTIONS
+.Bl -tag -width "-f packagelist"
+.It Fl A Ar post-script
+Source the
+.Ar post-script
+file after populating the
+.Ev $WRKDIR Ns
+/world directory.
+.Pp
+See the
+.Sx ENVIRONMENT
+section for a list of environment variables that are available.
+.It Fl b
+Place the swap partition before the primary partition(s) to allow the primary
+partition to be grown to fill the remaining space on a disk.
+.It Fl B Ar pre-script
+Source the
+.Ar pre-script
+file before the image prepare function.
+Can optionally replace the prepare function, in which case it should create the
+image file, add partitions, format filesystems, and then mount them to
+.Ev $WRKDIR Ns
+/world before the contents are installed to that directory.
+.Pp
+See the
+.Sx ENVIRONMENT
+section for a list of environment variables that are available or may need to
+be populated by the script.
+.It Fl c Ar overlaydir
+This specifies an extra directory whose contents will be copied directly into
+the final image, starting from the root.
+.It Fl f Ar packagelist
+This specifies a list of packages to be pre-installed in the final image.
+.It Fl h Ar hostname
+This specifies the hostname used for the image.
+Defaults to
+.Ar poudriere-image .
+.It Fl i Ar originimage
+Path to a previously built image.
+For
+.Fl t Cm zsnapshot ,
+this should be
+.Pa full.img.gz .
+For
+.Fl t Cm zfs
+this should be
+.Pa image.full.zfs .
+.It Fl j Ar name
+This argument specifies the name of the jail that is used.
+.It Fl m Ar overlaydir
+Build a miniroot image as well (for tar type images), and copy this directory
+into the miniroot image.
+.It Fl n Ar name
+This specifies the name of the resulting image.
+.It Fl o Ar outputdir
+This argument specifies directory where the resulting image will be created.
+.It Fl p Ar tree
+This argument specifies the name of the ports tree that is used.
+.It Fl R Ar flags
+The flags to pass to
+.Ql Cm zfs send
+when creating the replication stream.
+These will control which features are enabled in the stream.
+Default:
+.Fl Rec
+.It Fl S Ar snapshotname
+Name of the snapshot for zsnapshot type.
+.It Fl s Ar size
+This specifies the maximum size of the image that is built.
+.It Fl t Ar type
+This specifies the type of image to create:
+.Bl -tag -width "rawfirmware"
+.It hybridiso
+An ISO 9660 format image that that is also a valid GPT image and can be written
+to a USB device for BIOS/legacy and UEFI boot.
+.It iso
+An ISO 9660 format image.
+.It iso+mfs
+An ISO 9660 format image where the root filesystem is MFS mounted.
+.It iso+zmfs
+An ISO 9660 format image where the root filesystem is LZ77 compressed and is MFS
+mounted.
+.It usb
+A GPT-layout prepared UFS2 image containing a UEFI boot loader.
+.It usb+mfs
+A GPT-layout prepared UFS2 image containing a UEFI boot loader where the root
+filesystem is MFS mounted.
+.It usb+zmfs
+A GPT-layout prepared UFS2 image containing a UEFI boot loader where the root
+filesystem is LZ77 compressed and is MFS mounted.
+.It rawdisk
+A raw UFS2, softupdates-enabled, disk image.
+.It zrawdisk
+A raw ZFS disk image.
+.It zfs
+Create a ZFS image in the same style as
+.Xr bsdinstall 8 .
+Supports the following sub-types, defaulting to gpt if no subtype is specified:
+.It zfs+gpt
+Creates a complete disk image with a GPT partition table.
+Includes both UEFI and Legacy boot code.
+.It zfs+raw
+Created an image of only the ZFS pool with no partitions.
+Not bootable.
+.It zfs+send
+Creates a full ZFS replication stream of the whole pool, including the boot
+environment, to be received using the
+.Xr zfs-recv 8
+command.
+Alias for zfs+send+full.
+You may create both send streams by specifying both sub-types
+(example: zfs+send+full+be).
+.It zfs+send+be
+Creates a ZFS replication stream of only the boot environment.
+.It tar
+An XZ-compressed tarball.
+.It firmware
+A NanoBSD style image with a GPT partitions and a UEFI boot loader.
+.It rawfirmware
+A raw disk image.
+.It zsnapshot
+Create a zfs snapshot full and incremental to be used in a jail.
+.El
+.It Fl w Ar size
+This specifies the size of the swap partition to be added to the image.
+Size 0 skips the creation of a swap partition.
+.It Fl X Ar excludefile
+This specifies a list of files to exclude from the final image.
+.It Fl z Ar set
+This specifies which SET to use for the build.
+.El
+.Sh ENVIRONMENT
+.Bl -tag -width "ZFS_BEROOT_NAME"
+.It Ev IMAGESIZE
+The size of the image file to be created, in bytes.
+.It Ev IMAGENAME
+The name of the image (from
+.Fl n Ar name Ns
+).
+.It Ev SKIP_PREPARE
+If set, do not run the image types default prepare function.
+The pre-script must then create the image file, add partitions,
+format filesystems, and then mount them to
+.Ev $WRKDIR Ns
+/world .
+.It Ev WORLDDIR
+The path to the directory that is the root of the image.
+.It Ev ZFS_BEROOT_NAME
+The name of the dataset that contains all boot environments.
+Default: ROOT.
+.It Ev ZFS_BOOTFS_NAME
+The name of the default boot environment dataset.
+Default: default.
+.It Ev ZFS_POOL_NAME
+The name of the ZFS pool.
+Defaults to
+.Ev zroot .
+.It Ev md
+The name of the
+.Xr mdconfig 8
+device corresponding to the image file.
+The pre-script should populated this variable with the name of the md
+device created, so that it is properly cleaned up after the image is created.
+.El
+.Sh CUSTOMIZATION
+.Ss Create optional src.conf
+An optional src.conf which will be used for building images.
+Any of the following are allowed and will be applied in the order shown:
+.Pp
+.Dl Pa /usr/local/etc/poudriere.d/src.conf
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-src.conf
+.Dl Pa /usr/local/etc/poudriere.d/image-<jailname>-src.conf
+.Dl Pa /usr/local/etc/poudriere.d/image-<jailname>-<setname>-src.conf
+.Sh SEE ALSO
+.Xr poudriere 8 ,
+.Xr poudriere-bulk 8 ,
+.Xr poudriere-distclean 8 ,
+.Xr poudriere-jail 8 ,
+.Xr poudriere-logclean 8 ,
+.Xr poudriere-options 8 ,
+.Xr poudriere-pkgclean 8 ,
+.Xr poudriere-ports 8 ,
+.Xr poudriere-queue 8 ,
+.Xr poudriere-status 8 ,
+.Xr poudriere-testport 8 ,
+.Xr poudriere-version 8
+.Sh AUTHORS
+.An Baptiste Daroussin Aq bapt@FreeBSD.org
+.An Bryan Drewery Aq bdrewery@FreeBSD.org

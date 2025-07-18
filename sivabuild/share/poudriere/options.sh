@@ -200,41 +200,24 @@ MASTERMNT= fetch_global_port_vars
 export TERM=${SAVED_TERM}
 ports="$(MASTERMNTREL= listed_ports show_moved)" ||
     err "$?" "Failed to list ports"
-recurse_depends=""
+sivaports=""
 for originspec in ${ports}; do
 	originspec_decode "${originspec}" origin flavor ''
 	[ -d "${MASTERMNT}${PORTSDIR:?}/${origin}" ] || err 1 "No such port: ${origin}"
-	recurse_depends="${recurse_ports} ${origin}>0:${originspec}"
-	case "${COMMAND}" in
-		*-conditional) ;;
-		*)
-			env ${flavor:+FLAVOR=${flavor}} \
-			make PORT_DBDIR=${PORT_DBDIR} \
-				PORTSDIR=${MASTERMNT}${PORTSDIR} \
-				-C ${MASTERMNT}${PORTSDIR}/${origin} \
-				${COMMAND}
-			;;
-	esac
-	case "${COMMAND}" in
-	showconfig)
-		msg "Re-run 'poudriere options' with the -c flag to modify the options."
-		;;
-	esac
+	sivaports="${sivaports}${origin}>0:${originspec} "
 done
 
-if [ -n "${DO_RECURSE}" ]; then
-	_tmpportdir="$(mktemp -d poudriere_options.XXXXXXXX)"
-	cat > "${_tmpportdir}/Makefile" <<EOF
+sivatmp=$(mktemp -d /tmp/siva.XXXXXXXX)
+cat > $sivatmp/Makefile <<EOF
 PORTNAME=poudriere-options-dummy
-BUILD_DEPENDS="${recurse_depends}"
+BUILD_DEPENDS=${sivaports}
 .include <bsd.port.mk>
 EOF
-	make PORT_DBDIR=${PORT_DBDIR} \
-		PORTSDIR=${MASTERMNT}${PORTSDIR} \
-		PKG_BIN=`which pkg-static` \
-		DIALOG4PORTS=`which $d4p` \
-		LOCALBASE=/nonexistent \
-		-C ${_tmpportdir} \
-		${RECURSE_COMMAND}
-	rm -rf ${_tmpportdir}
-fi
+make -C $sivatmp \
+	PORT_DBDIR=${PORT_DBDIR} \
+	PORTSDIR=${MASTERMNT}${PORTSDIR} \
+	PKG_BIN=`which pkg-static` \
+	DIALOG4PORTS=`which $d4p` \
+	LOCALBASE=/nonexistent \
+	${RECURSE_COMMAND}
+rm -rf $sivatmp

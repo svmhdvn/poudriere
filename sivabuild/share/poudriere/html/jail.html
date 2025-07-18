@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<!--
+/*
+ * Copyright (c) 2014-2015 Bryan Drewery <bdrewery@FreeBSD.org>
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Poudriere Jail listing</title>
+
+    <link
+      href="assets/bootstrap-5.3.2/css/bootstrap.min.css"
+      type="text/css"
+      rel="stylesheet"
+    />
+    <link
+      href="assets/DataTables-1.13.8/css/dataTables.bootstrap5.min.css"
+      rel="stylesheet"
+      type="text/css"
+    />
+
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+  </head>
+  <body class="p-0">
+    <div id="top"></div>
+    <nav
+      class="navbar navbar-expand-lg bg-dark fixed-top p-3"
+      data-bs-theme="dark"
+    >
+      <div class="container">
+        <div id="logo">
+          <a href="index.html" class="navbar-brand">
+            <img
+              src="assets/logo-dark.png"
+              alt="logo"
+              height="44"
+              class="image-fluid"
+            />
+          </a>
+        </div>
+
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navmenu"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navmenu">
+          <ul class="navbar-nav mr-auto">
+            <li class="nav-item">
+              <a href="#masterinfo" class="nav-link nav-link px-2 fs-6 mx-1"
+                >Master Info</a
+              >
+            </li>
+            <li class="nav-item">
+              <a href="#builds" class="nav-link px-2 fs-6 mx-1">Builds</a>
+            </li>
+            <li class="nav-item">
+              <a href="#" id="latest_url" class="nav-link px-2 fs-6 mx-1"
+                >Latest Build</a
+              >
+            </li>
+          </ul>
+        </div>
+
+        <div class="collapse navbar-collapse" id="navmenu">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item dropdown">
+              <button
+                class="btn btn-light dropdown-toggle"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                Logs
+              </button>
+              <ul class="dropdown-menu">
+                <li>
+                  <a
+                    href="latest-per-pkg/"
+                    class="dropdown-item data_url"
+                    target="logs"
+                    >Latest Per Package</a
+                  >
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+        <!-- /.navbar-collapse -->
+      </div>
+      <!-- /container -->
+    </nav>
+    <!-- navbar -->
+    <section id="section" class="p-5">
+      <div id="main" class="container p-5">
+        <div id="loading_overlay">
+          <div id="loading">
+            <p>Loading...</p>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-12">
+            <div id="masterinfo_div" style="display: none">
+              <div class="card my-3 bg-dark text-white fs-5">
+                <div class="card-body fs-5">Master Info</div>
+              </div>
+              <dl class="dl-horizontal">
+                <dt>Master</dt>
+                <dd id="mastername"></dd>
+                <dt>Latest build</dt>
+                <dd id="latest_build"></dd>
+                <dt>Status</dt>
+                <dd id="status"></dd>
+                <dt>Jail</dt>
+                <dd id="jail"></dd>
+                <dt>Set</dt>
+                <dd id="setname"></dd>
+                <dt>Ports Tree</dt>
+                <dd id="ptname"></dd>
+              </dl>
+            </div>
+            <!-- #masterinfo -->
+          </div>
+          <!-- /col -->
+        </div>
+        <!-- /row -->
+        <div class="row">
+          <div class="col-md-12">
+            <div id="builds_div" style="display: none">
+              <div class="card my-3 bg-dark text-white fs-5">
+                <div class="card-body fs-5">Builds</div>
+              </div>
+              <table class="table table-striped" id="builds_table">
+                <thead>
+                  <tr>
+                    <th>Build</th>
+                    <th
+                      class="table-secondary"
+                      title="Queued"
+                      data-toggle="tooltip"
+                      data-container="body"
+                    >
+                      <span class="d-none d-xl-block">Queued</span
+                      ><span class="d-xl-none">Q</span>
+                    </th>
+                    <th
+                      class="table-success"
+                      title="Built"
+                      data-toggle="tooltip"
+                      data-container="body"
+                    >
+                      <span class="d-none d-xl-block">Built</span
+                      ><span class="d-xl-none">B</span>
+                    </th>
+                    <th
+                      class="table-danger"
+                      title="Failed"
+                      data-toggle="tooltip"
+                      data-container="body"
+                    >
+                      <span class="d-none d-xl-block">Failed</span
+                      ><span class="d-xl-none">F</span>
+                    </th>
+                    <th
+                      class="table-info"
+                      title="Skipped"
+                      data-toggle="tooltip"
+                      data-container="body"
+                    >
+                      <span class="d-none d-xl-block">Skipped</span
+                      ><span class="d-xl-none">S</span>
+                    </th>
+                    <th
+                      class="table-warning"
+                      title="Inspected"
+                      data-toggle="tooltip"
+                      data-container="body"
+                    >
+                      <span class="d-none d-xl-block">Inspected</span
+                      ><span class="d-xl-none">IN</span>
+                    </th>
+                    <th
+                      class="table-warning"
+                      title="Ignored"
+                      data-toggle="tooltip"
+                      data-container="body"
+                    >
+                      <span class="d-none d-xl-block">Ignored</span
+                      ><span class="d-xl-none">I</span>
+                    </th>
+                    <th
+                      class="table-primary"
+                      title="Fetched"
+                      data-toggle="tooltip"
+                      data-container="body"
+                    >
+                      <span class="d-none d-xl-block">Fetched</span
+                      ><span class="d-xl-none">F</span>
+                    </th>
+                    <th
+                      class="remaining"
+                      title="Remaining"
+                      data-toggle="tooltip"
+                      data-container="body"
+                    >
+                      <span class="d-none d-xl-block">Remaining</span
+                      ><span class="d-xl-none">R</span>
+                    </th>
+                    <th>Status</th>
+                    <th>Elapsed</th>
+                  </tr>
+                </thead>
+                <tbody id="builds_body"></tbody>
+              </table>
+            </div>
+            <!-- #builds -->
+          </div>
+          <!-- /col -->
+        </div>
+        <!-- /row -->
+      </div>
+      <!-- #main -->
+    </section>
+    <div class="container">
+      <footer
+        class="row row-cols-1 row-cols-sm-2 row-cols-md-5 py-5 my-5 border-top"
+      >
+        <div class="col mb-3">
+          <a
+            href="https://www.FreeBSD.org/"
+            class="d-flex align-items-center mb-3 link-body-emphasis text-decoration-none"
+          >
+            <img
+              src="assets/logo-light.png"
+              alt="logo"
+              height="44"
+              class="image-fluid"
+            />
+          </a>
+          <p class="text-body-secondary">&copy; 2024 The FreeBSD Project</p>
+        </div>
+
+        <div class="col mb-3"></div>
+
+        <div class="col mb-3">
+          <h5>About</h5>
+          <ul class="nav flex-column">
+            <li class="nav-item mb-2">
+              <a
+                href="https://www.freebsd.org/"
+                class="nav-link p-0 text-body-secondary"
+                >FreeBSD</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://freebsdfoundation.org/"
+                class="nav-link p-0 text-body-secondary"
+                >FreeBSD Foundation</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://www.freebsd.org/where/"
+                class="nav-link p-0 text-body-secondary"
+                >Get FreeBSD</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://www.freebsd.org/security/"
+                class="nav-link p-0 text-body-secondary"
+                >Security Advisories</a
+              >
+            </li>
+          </ul>
+        </div>
+
+        <div class="col mb-3">
+          <h5>Documentation</h5>
+          <ul class="nav flex-column">
+            <li class="nav-item mb-2">
+              <a
+                href="https://docs.freebsd.org/en/"
+                class="nav-link p-0 text-body-secondary"
+                >Documentation Portal</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://man.freebsd.org/cgi/man.cgi"
+                class="nav-link p-0 text-body-secondary"
+                >Manual Pages</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://wiki.freebsd.org/"
+                class="nav-link p-0 text-body-secondary"
+                >Wiki</a
+              >
+            </li>
+          </ul>
+        </div>
+
+        <div class="col mb-3">
+          <h5>Poudriere</h5>
+          <ul class="nav flex-column">
+            <li class="nav-item mb-2">
+              <a
+                href="https://github.com/freebsd/poudriere"
+                class="nav-link p-0 text-body-secondary"
+                >Source Code</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://github.com/freebsd/poudriere/wiki"
+                class="nav-link p-0 text-body-secondary"
+                >Wiki & Manuals</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://github.com/freebsd/poudriere/issues"
+                class="nav-link p-0 text-body-secondary"
+                >Issues</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://github.com/freebsd/poudriere/pulls"
+                class="nav-link p-0 text-body-secondary"
+                >Pull Requests</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://github.com/freebsd/poudriere/discussions"
+                class="nav-link p-0 text-body-secondary"
+                >Discussions</a
+              >
+            </li>
+          </ul>
+        </div>
+      </footer>
+    </div>
+    <script
+      src="assets/jquery-3.7.1/jquery-3.7.1.min.js"
+      type="text/javascript"
+    ></script>
+    <script
+      src="assets/bootstrap-5.3.2/js/bootstrap.bundle.min.js"
+      type="text/javascript"
+    ></script>
+    <script
+      src="assets/DataTables-1.13.8/js/jquery.dataTables.min.js"
+      type="text/javascript"
+      charset="utf8"
+    ></script>
+    <script
+      src="assets/DataTables-1.13.8/js/dataTables.bootstrap5.min.js"
+      type="text/javascript"
+      charset="utf8"
+    ></script>
+    <script
+      src="assets/jquery.dataTables.rowGrouping-1.2.9.js"
+      type="text/javascript"
+    ></script>
+    <script type="text/javascript">
+      server_style = "hosted";
+    </script>
+    <script src="assets/poudriere.js" type="text/javascript"></script>
+  </body>
+</html>

@@ -1,0 +1,244 @@
+#!/bin/sh
+# 
+# Copyright (c) 2010-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+# Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
+# All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+# OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGE.
+
+LC_ALL=C
+POUDRIERE_VERSION="3.4-pre"
+POUDRIERE_NAME="poudriere-git"
+POUDRIERE_PKGNAME="${POUDRIERE_NAME}-${POUDRIERE_VERSION}"
+USE_DEBUG=@USE_DEBUG@
+PATH="/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/sbin:/usr/local/bin:${PATH}"
+
+env_set() {
+	local envvar="$1"
+	local envvalue="${2:-"\${${envvar}}"}"
+
+	CMD_ENV_S="${CMD_ENV_S:+${CMD_ENV_S} }\"${envvar}=${envvalue}\""
+	_EXPORT_LIST="${_EXPORT_LIST:+${_EXPORT_LIST} }${envvar}"
+}
+
+# Exporting saved until last to not impact any tests between env_set and
+# env -S.
+env_export() {
+	export ${_EXPORT_LIST}
+}
+
+usage() {
+	cat << EOF
+Usage: poudriere [-ANv] [-e etcdir] command [options]
+
+Options:
+    -A          -- Force colors, even if not in a TTY
+    -e etcdir   -- Specify an alternate etc/ dir where poudriere configuration
+                   resides.
+    -N          -- Disable colors
+    -v          -- Be verbose; show more information. Use twice to enable
+                   debug output
+Commands:
+    bulk        -- Generate packages for given ports
+    distclean   -- Remove old distfiles
+    daemon      -- Launch the poudriere daemon
+    help        -- Show usage
+    image       -- Generate images
+    jail        -- Manage the jails used by poudriere
+    logclean    -- Remove old logfiles
+    ports       -- Create, update or delete the portstrees used by poudriere
+    pkgclean    -- Remove packages that are no longer needed
+    options     -- Configure ports options
+    queue       -- Queue a build request
+    status      -- Get the status of builds
+    testport    -- Launch a test build of a given port
+    version     -- Show the version of poudriere
+EOF
+	exit 1
+}
+
+SETX=""
+SETE=
+Xflag=0
+while getopts "Ade:ENvxX" FLAG; do
+	case "${FLAG}" in
+	A)
+		env_set FORCE_COLORS '1'
+		;;
+	d)
+		USE_DEBUG="yes"
+		;;
+	e)
+		if [ ! -d "$OPTARG" ]; then
+			echo "Error: argument '$OPTARG' not a directory"
+			exit 1
+		fi
+		POUDRIERE_ETC="$OPTARG"
+		;;
+	E)
+		SETE=1
+		;;
+	N)
+		env_set USE_COLORS 'no'
+		;;
+	v)
+		VERBOSE=$((${VERBOSE:-0} + 1))
+		;;
+	x)
+		SETX="-x"
+		;;
+	X)
+		Xflag=1
+		;;
+	*)
+		usage
+		;;
+	esac
+done
+
+shift $((OPTIND-1))
+
+[ $# -lt 1 ] && usage
+CMD="$1"
+shift
+
+case "$-" in
+*x*)
+	Xflag=1
+	;;
+esac
+
+if [ "${Xflag}" -eq 1 ]; then
+	SETX="-x"
+	SETX_EXIT='1'
+	env_set SETX_EXIT
+fi
+
+# Valid command list.
+case "${CMD}" in
+api|bulk|distclean|daemon|image|jail|foreachport|logclean|ports|options|pkgclean|queue|status|testport)
+	;;
+jails)
+	CMD="jail"
+	;;
+version)
+	echo "${POUDRIERE_PKGNAME}"
+	exit 0
+	;;
+help)
+	usage
+	;;
+*)
+	echo "Unknown command '${CMD}'"
+	usage
+	;;
+esac
+
+POUDRIEREPATH=`realpath $0`
+case "${POUDRIEREPATH}" in
+*/bin/poudriere)	# Running from PREFIX/bin/poudriere
+	POUDRIEREPREFIX="${POUDRIEREPATH%/bin/*}"
+	LIBEXECPREFIX="${POUDRIEREPREFIX}/libexec/poudriere"
+	;;
+*)			# Running from source checkout or build dir
+	: ${LIBEXECPREFIX:="${POUDRIEREPATH%/poudriere}"}
+	: ${POUDRIEREPREFIX:="${POUDRIEREPATH%/poudriere}/src"}
+	: ${POUDRIERE_ETC:="/usr/local/etc"}
+esac
+: ${SCRIPTPREFIX:="${POUDRIEREPREFIX}/share/poudriere"}
+if [ ! -d "${POUDRIEREPREFIX}" ] || [ ! -e "${SCRIPTPREFIX}/common.sh" ]; then
+	echo "$0: Unable to determine POUDRIEREPREFIX" >&2
+	exit 70 # EX_SOFTWARE
+fi
+case "${USE_DEBUG}" in
+no) ;;
+yes) env_set USE_DEBUG ;;
+esac
+env_set SCRIPTPREFIX
+SCRIPTPATH="${SCRIPTPREFIX}/${CMD}.sh"
+env_set SCRIPTPATH
+SCRIPTNAME="${SCRIPTPATH##*/}"
+env_set SCRIPTNAME
+
+[ -n "${POUDRIERE_ETC}" ] && env_set POUDRIERE_ETC
+env_set LIBEXECPREFIX
+env_set PATH $'${LIBEXECPREFIX}:${PATH}'
+env_set POUDRIERE_VERSION
+env_set POUDRIERE_NAME
+env_set POUDRIERE_PKGNAME
+env_set POUDRIEREPATH
+[ -n "${VERBOSE}" ] && env_set VERBOSE
+
+# Set SAVED_TERM=$TERM for some interactive features.
+case "${CMD}" in
+options|testport|bulk)
+	env_set SAVED_TERM $'${TERM}'
+	;;
+esac
+
+# Special-case environment passthroughs.
+while read envvar; do
+	case "${envvar}" in
+	ASSERT_CONTINUE)
+		;;
+	FETCH_BIND_ADDRESS|FTP_*|ftp_*|HTTP_*|http_*|SSH_*|SSL_|NO_PROXY|no_proxy)
+		case "${CMD}" in
+		ports|jail) ;;
+		*) continue ;;
+		esac
+		;;
+	MAKEOBJDIRPREFIX)
+		case "${CMD}" in
+		jail) ;;
+		*) continue ;;
+		esac
+		;;
+	POUDRIERE_INTERACTIVE_NO_INSTALL)
+		case "${CMD}" in
+		bulk|testport) ;;
+		*) continue ;;
+		esac
+		;;
+	*) continue ;;
+	esac
+	env_set "${envvar}"
+done <<-EOF
+$(export)
+EOF
+
+# set -e blacklist (default on otherwise)
+case "${SETE}${CMD}" in
+jail|ports|daemon|status|options)
+	;;
+*)
+	SET_ERREXIT="-e -o pipefail"
+	;;
+esac
+
+: ${UMASK:=022}
+umask ${UMASK}
+
+: ${SH:=sh}
+
+env_export
+exec env -i -P "${LIBEXECPREFIX}:/bin" ${CMD_ENV_S:+-S "${CMD_ENV_S}"} \
+    ${SH} ${SET_ERREXIT} ${SETX} "${SCRIPTPATH}" "$@"

@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<!--
+/*
+ * Copyright (c) 2014-2017 Bryan Drewery <bdrewery@FreeBSD.org>
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Poudriere bulk results</title>
+
+    <link
+      href="assets/bootstrap-5.3.2/css/bootstrap.min.css"
+      type="text/css"
+      rel="stylesheet"
+    />
+    <link
+      href="assets/DataTables-1.13.8/css/dataTables.bootstrap5.min.css"
+      rel="stylesheet"
+      type="text/css"
+    />
+
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+  </head>
+  <body class="p-0">
+    <div id="top"></div>
+    <nav
+      class="navbar navbar-expand-lg bg-dark fixed-top p-3"
+      data-bs-theme="dark"
+    >
+      <div class="container">
+        <div id="logo">
+          <a href="index.html" class="navbar-brand">
+            <img
+              src="assets/logo-dark.png"
+              alt="logo"
+              height="44"
+              class="image-fluid"
+            />
+          </a>
+        </div>
+
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navmenu"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navmenu">
+          <ul class="navbar-nav mr-auto">
+            <li class="nav-item">
+              <a
+                title="Jail Builds"
+                id="master_link"
+                class="nav-link px-2 fs-6 me-2"
+                >Jail Builds</a
+              >
+            </li>
+            <li class="nav-item">
+              <a href="#build_info" class="nav-link px-2 fs-6 mx-1">Build</a>
+            </li>
+            <li class="nav-item">
+              <a href="#jobs" class="nav-link px-2 fs-6 mx-1">Jobs</a>
+            </li>
+          </ul>
+        </div>
+        <div class="collapse navbar-collapse" id="navmenu">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item dropdown">
+              <button
+                class="btn btn-light dropdown-toggle"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                Results
+              </button>
+              <ul class="dropdown-menu">
+                <li class="disabled" id="nav_built">
+                  <a href="#built_div" class="dropdown-item nav-link">Built</a>
+                </li>
+                <li class="disabled" id="nav_failed">
+                  <a href="#failed_div" class="dropdown-item nav-link">Failed</a>
+                </li>
+                <li class="disabled" id="nav_skipped">
+                  <a href="#skipped_div" class="dropdown-item nav-link">Skipped</a>
+                </li>
+                <li class="disabled" id="nav_inspected">
+                  <a href="#inspected_div" class="dropdown-item nav-link">Inspected</a>
+                </li>
+                <li class="disabled" id="nav_ignored">
+                  <a href="#ignored_div" class="dropdown-item nav-link">Ignored</a>
+                </li>
+                <li class="disabled" id="nav_fetched">
+                  <a href="#fetched_div" class="dropdown-item nav-link">Fetched</a>
+                </li>
+                <li class="disabled" id="nav_queued">
+                  <a href="#queued_div" class="dropdown-item nav-link">Queued</a>
+                </li>
+                <li class="disabled" id="nav_remaining">
+                  <a href="#remaining_div" class="dropdown-item nav-link"
+                    >Remaining</a
+                  >
+                </li>
+              </ul>
+            </li>
+            <li class="nav-item dropdown ms-2">
+              <button
+                class="btn btn-light dropdown-toggle"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                Logs
+              </button>
+              <ul class="dropdown-menu">
+                <li>
+                  <a href="logs/" class="dropdown-item data_url" target="logs"
+                    >All Logs</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="logs/errors/"
+                    class="dropdown-item data_url"
+                    target="logs"
+                    >Error Logs</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href=".poudriere.pkg_deps%25"
+                    class="dropdown-item data_url"
+                    target="dependecny_graph"
+                    >Dependency graph</a
+                  >
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+        <!-- /.navbar-collapse -->
+      </div>
+    </nav>
+    <!-- navbar -->
+    <section id="section-build" class="p-5">
+      <div id="main" class="container p-5">
+        <div class="row">
+          <div class="col-md-5">
+            <div id="build_info_div" style="display: none">
+              <div class="card my-3 bg-dark text-white fs-5">
+                <div class="card-body fs-5">Build</div>
+              </div>
+              <dl class="dl-horizontal">
+                <dt>Master</dt>
+                <dd id="mastername"></dd>
+                <dt>Build</dt>
+                <dd id="buildname"></dd>
+                <dt>Status</dt>
+                <dd id="status"></dd>
+                <dt>Jail</dt>
+                <dd id="jail"></dd>
+                <dt>Set</dt>
+                <dd id="setname"></dd>
+                <dt>Ports Tree</dt>
+                <dd id="ptname"></dd>
+                <dt id="overlays_title">Overlays</dt>
+                <dd id="overlays"></dd>
+                <dt id="git_hash_title">Git</dt>
+                <dd id="git_hash"></dd>
+              </dl>
+            </div>
+            <!-- #build_info -->
+          </div>
+          <!-- /col -->
+          <div class="col-md-7">
+            <div id="jobs_div" class="status" style="display: none">
+              <div class="card my-3 bg-dark text-white fs-5">
+                <div class="card-body fs-5">Jobs</div>
+              </div>
+              <table id="builders_table" class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Id</th>
+                    <th>Package</th>
+                    <th>Origin</th>
+                    <th>Status</th>
+                    <th>Elapsed</th>
+                  </tr>
+                </thead>
+                <tbody id="builders_body"></tbody>
+              </table>
+            </div>
+            <!-- #jobs -->
+          </div>
+          <!-- /col -->
+        </div>
+        <!-- /row -->
+        <!-- /col -->
+        <div class="row py-4">
+          <div class="col-md-12">
+            <div id="stats" style="display: none">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th class="text-center table-secondary">Queued</th>
+                    <th class="text-center table-success">Built</th>
+                    <th class="text-center table-danger">Failed</th>
+                    <th class="text-center table-info">Skipped</th>
+                    <th class="text-center table-warning">Inspected</th>
+                    <th class="text-center table-warning">Ignored</th>
+                    <th class="text-center table-primary">Fetched</th>
+                    <th class="text-center">Remaining</th>
+                  </tr>
+                </thead>
+                <tr>
+                  <td id="stats_queued" class="queued text-center"></td>
+                  <td id="stats_built" class="built text-center"></td>
+                  <td id="stats_failed" class="failed text-center"></td>
+                  <td id="stats_skipped" class="text-center"></td>
+                  <td id="stats_inspected" class="text-center"></td>
+                  <td id="stats_ignored" class="text-center"></td>
+                  <td id="stats_fetched" class="text-center"></td>
+                  <td id="stats_remaining" class="text-center"></td>
+                </tr>
+              </table>
+            </div>
+            <div id="snap" style="display: none">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th
+                      title="(% of allocated CPU) 1 5 10 minute averages"
+                      class="text-center"
+                    >
+                      Load Averages
+                    </th>
+                    <th title="% of swap devices used" class="text-center">
+                      Swapinfo
+                    </th>
+                    <th class="text-center">Elapsed</th>
+                    <th
+                      title="Average package build rate per hour"
+                      class="text-center"
+                    >
+                      Pkg/Hour
+                    </th>
+                    <th class="impulse" class="text-center">Impulse</th>
+                  </tr>
+                </thead>
+                <tr>
+                  <td
+                    id="snap_loadavg"
+                    title="(% of allocated CPU) 1 5 10 minute averages"
+                    class="text-center"
+                  ></td>
+                  <td
+                    id="snap_swapinfo"
+                    title="% of swap devices used"
+                    class="text-center"
+                  ></td>
+                  <td id="snap_elapsed" class="text-center"></td>
+                  <td
+                    id="snap_pkghour"
+                    title="Average package build rate per hour"
+                    class="text-center"
+                  ></td>
+                  <td
+                    class="impulse"
+                    id="snap_impulse"
+                    class="text-center"
+                  ></td>
+                </tr>
+              </table>
+            </div>
+          </div>
+        </div>
+        <!-- /container -->
+        <div class="row">
+          <div class="col-md-12">
+            <div id="built_div" style="display: none">
+              <div class="card my-3 bg-dark text-white fs-5">
+                <div class="card-body fs-5">Built Ports</div>
+              </div>
+              <table class="table table-striped" id="built_table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Package</th>
+                    <th>Origin</th>
+                    <th>Log</th>
+                    <th>Time</th>
+                  </tr>
+                </thead>
+                <tbody id="built_body"></tbody>
+              </table>
+            </div>
+            <!-- #built -->
+            <div id="failed_div" class="status" style="display: none">
+              <h2 id="failed">Failed ports</h2>
+              <table class="table table-striped" id="failed_table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Package</th>
+                    <th>Origin</th>
+                    <th>Phase</th>
+                    <th>Skipped</th>
+                    <th>Log</th>
+                    <th>Time</th>
+                  </tr>
+                </thead>
+                <tbody id="failed_body"></tbody>
+              </table>
+            </div>
+            <!-- #failed -->
+            <div id="skipped_div" style="display: none">
+              <div class="card my-3 bg-dark text-white fs-5">
+                <div class="card-body fs-5">Skipped Ports</div>
+              </div>
+              <table class="table table-striped" id="skipped_table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Package</th>
+                    <th>Origin</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="skipped_body"></tbody>
+              </table>
+            </div>
+            <!-- #skipped -->
+            <div id="inspected_div" style="display: none">
+              <div class="card my-3 bg-dark text-white fs-5">
+                <div class="card-body fs-5">Inspected Ports</div>
+              </div>
+              <table class="table table-striped" id="inspected_table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Package</th>
+                    <th>Origin</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="inspected_body"></tbody>
+              </table>
+            </div>
+            <!-- #inspected -->
+            <div id="ignored_div" style="display: none">
+              <div class="card my-3 bg-dark text-white fs-5">
+                <div class="card-body fs-5">Ignored Ports</div>
+              </div>
+              <table class="table table-striped" id="ignored_table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Package</th>
+                    <th>Origin</th>
+                    <th>Skipped</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="ignored_body"></tbody>
+              </table>
+            </div>
+            <!-- #ignored -->
+            <div id="fetched_div" style="display: none">
+              <div class="card my-3 bg-dark text-white fs-5">
+                <div class="card-body fs-5">Fetched Ports</div>
+              </div>
+              <table class="table table-striped" id="fetched_table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Package</th>
+                    <th>Origin</th>
+                  </tr>
+                </thead>
+                <tbody id="fetched_body"></tbody>
+              </table>
+            </div>
+            <!-- #fetched -->
+            <div id="queued_div" style="display: none">
+              <div class="card my-3 bg-dark text-white fs-5">
+                <div class="card-body fs-5">Queued Ports</div>
+              </div>
+              <table class="table table-striped" id="queued_table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Package</th>
+                    <th>Origin</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="queued_body"></tbody>
+              </table>
+            </div>
+            <!-- #queued -->
+            <div id="remaining_div" style="display: none">
+              <div class="card my-3 bg-dark text-white fs-5">
+                <div class="card-body fs-5">Remaining Ports</div>
+              </div>
+              <table class="table table-striped" id="remaining_table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Package</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="remaining_body"></tbody>
+              </table>
+            </div>
+            <!-- #remaining -->
+          </div>
+          <!-- /col -->
+        </div>
+        <!-- /row -->
+      </div>
+      <!-- #main -->
+    </section>
+    <div class="container">
+      <footer
+        class="row row-cols-1 row-cols-sm-2 row-cols-md-5 py-5 my-5 border-top"
+      >
+        <div class="col mb-3">
+          <a
+            href="https://www.FreeBSD.org/"
+            class="d-flex align-items-center mb-3 link-body-emphasis text-decoration-none"
+          >
+            <img
+              src="assets/logo-light.png"
+              alt="logo"
+              height="44"
+              class="image-fluid"
+            />
+          </a>
+          <p class="text-body-secondary">&copy; 2024 The FreeBSD Project</p>
+        </div>
+
+        <div class="col mb-3"></div>
+
+        <div class="col mb-3">
+          <h5>About</h5>
+          <ul class="nav flex-column">
+            <li class="nav-item mb-2">
+              <a
+                href="https://www.freebsd.org/"
+                class="nav-link p-0 text-body-secondary"
+                >FreeBSD</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://freebsdfoundation.org/"
+                class="nav-link p-0 text-body-secondary"
+                >FreeBSD Foundation</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://www.freebsd.org/where/"
+                class="nav-link p-0 text-body-secondary"
+                >Get FreeBSD</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://www.freebsd.org/security/"
+                class="nav-link p-0 text-body-secondary"
+                >Security Advisories</a
+              >
+            </li>
+          </ul>
+        </div>
+
+        <div class="col mb-3">
+          <h5>Documentation</h5>
+          <ul class="nav flex-column">
+            <li class="nav-item mb-2">
+              <a
+                href="https://docs.freebsd.org/en/"
+                class="nav-link p-0 text-body-secondary"
+                >Documentation Portal</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://man.freebsd.org/cgi/man.cgi"
+                class="nav-link p-0 text-body-secondary"
+                >Manual Pages</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://wiki.freebsd.org/"
+                class="nav-link p-0 text-body-secondary"
+                >Wiki</a
+              >
+            </li>
+          </ul>
+        </div>
+
+        <div class="col mb-3">
+          <h5>Poudriere</h5>
+          <ul class="nav flex-column">
+            <li class="nav-item mb-2">
+              <a
+                href="https://github.com/freebsd/poudriere"
+                class="nav-link p-0 text-body-secondary"
+                >Source Code</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://github.com/freebsd/poudriere/wiki"
+                class="nav-link p-0 text-body-secondary"
+                >Wiki & Manuals</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://github.com/freebsd/poudriere/issues"
+                class="nav-link p-0 text-body-secondary"
+                >Issues</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://github.com/freebsd/poudriere/pulls"
+                class="nav-link p-0 text-body-secondary"
+                >Pull Requests</a
+              >
+            </li>
+            <li class="nav-item mb-2">
+              <a
+                href="https://github.com/freebsd/poudriere/discussions"
+                class="nav-link p-0 text-body-secondary"
+                >Discussions</a
+              >
+            </li>
+          </ul>
+        </div>
+      </footer>
+    </div>
+    <nav class="navbar fixed-bottom bg-light">
+      <div class="container">
+        <div id="progress_col" class="w-100">
+          <span id="progress">
+            <canvas
+              id="progressbar"
+              class="rounded-pill border border-dark"
+            ></canvas>
+            <span id="progresspct"></span>
+          </span>
+        </div>
+        <!-- /col -->
+      </div>
+      <!-- /container -->
+    </nav>
+    <!-- #footer -->
+    <script
+      src="assets/jquery-3.7.1/jquery-3.7.1.min.js"
+      type="text/javascript"
+    ></script>
+    <script
+      src="assets/bootstrap-5.3.2/js/bootstrap.bundle.min.js"
+      type="text/javascript"
+    ></script>
+    <script
+      src="assets/DataTables-1.13.8/js/jquery.dataTables.min.js"
+      type="text/javascript"
+      charset="utf8"
+    ></script>
+    <script
+      src="assets/DataTables-1.13.8/js/dataTables.bootstrap5.min.js"
+      type="text/javascript"
+      charset="utf8"
+    ></script>
+    <script
+      src="assets/jquery.dataTables.rowGrouping-1.2.9.js"
+      type="text/javascript"
+    ></script>
+    <script type="text/javascript">
+      server_style = "hosted";
+    </script>
+    <script src="assets/poudriere.js" type="text/javascript"></script>
+  </body>
+</html>

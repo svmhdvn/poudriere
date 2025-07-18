@@ -1,0 +1,448 @@
+.\" Copyright (c) 2012 Baptiste Daroussin <bapt@FreeBSD.org>
+.\" Copyright (c) 2012-2014 Bryan Drewery <bdrewery@FreeBSD.org>
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD$
+.\"
+.\" Note: The date here should be updated whenever a non-trivial
+.\" change is made to the manual page.
+.Dd December 24, 2022
+.Dt POUDRIERE 8
+.Os
+.Sh NAME
+.Nm poudriere
+.Nd bulk package builder and port tester
+.Sh SYNOPSIS
+.Nm
+.Ar poudriere-options
+.Cm command
+.Op Ar command-options
+.Sh DESCRIPTION
+The
+.Nm
+tool is used to build packages from the ports tree.
+It can also be used to test a single port.
+.Sh GLOBAL OPTIONS
+.Nm
+accepts the following global options.
+.Bl -tag -width "-f conffile"
+.It Fl A
+Force color support, even if not in a TTY.
+.It Fl e Ar etcdir
+Path to the directory where
+.Nm
+will find its configuration data.
+See
+.Sx FILES
+and
+.Sx ENVIRONMENT
+for more information.
+.It Fl N
+Disable color support.
+.It Fl v
+This will show more information during the build.
+Specify twice to enable debug output.
+.El
+.Sh COMMANDS
+The first argument to
+.Nm
+must be a
+.Cm command
+from the following list:
+.Bl -tag -width 5
+.It Cm bulk ( Xr poudriere-bulk 8 )
+This command makes a ready-to-export package tree, and fills it with
+binary packages built from a given list of ports.
+During the build, hit ^T to send
+.Dv SIGINFO
+and show stats and progress about the build.
+.It Cm image Xr ( poudriere-image 8 )
+This command creates images.
+.It Cm jail Xr ( poudriere-jail 8 )
+This command manages the
+.Nm
+jails which are used as different building environments.
+.It Cm ports Xr ( poudriere-ports 8 )
+This command provides management of different portstrees which will be used
+by
+.Nm .
+.It Cm testport Xr ( poudriere-testport 8 )
+This command, mainly targeted at ports developers, launches a
+test on a given port (useful before submitting/committing a port).
+.It Cm options Xr ( poudriere-options 8 )
+This command configures the options for a given port
+.It Cm logclean Xr ( poudriere-logclean 8 )
+This command will cleanup old logfiles
+.It Cm distclean Xr ( poudriere-distclean 8 )
+This command will cleanup old distfiles
+.It Cm pkgclean Xr ( poudriere-pkgclean 8 )
+This command will cleanup old and unwanted packages
+.It Cm queue Xr ( poudriere-queue 8 )
+This command allows a non-root user to queue
+.Nm
+commands.
+It is currently
+.Sy EXPERIMENTAL .
+Using it requires starting
+.Sy poudriered
+via the provided rc script.
+.It Cm status Xr ( poudriere-status 8 )
+This command shows status of current and previous builds
+.It Cm version Xr ( poudriere-version 8 )
+Show version of
+.Nm .
+.El
+.Sh ENVIRONMENT
+.Bl -tag -width "HTTP_PROXY FTP_PROXY"
+.It Ev POUDRIERE_ETC
+If specified, the path to poudriere's config directory.
+Defaults to
+.Pa /usr/local/etc .
+.It Ev UMASK
+The umask for files created by
+.Nm .
+Defaults to
+.Sy 022.
+.El
+.Pp
+See subcommand manpage
+.Sx ENVIRONMENT
+sections for more information.
+.Sh FILES
+.Bl -tag -width ".Pa POUDRIERE_ETC/poudriere.d/poudriere.conf" -compact
+.It Pa POUDRIERE_ETC/poudriere.conf
+See self-documented
+.Pa /usr/local/etc/poudriere.conf.sample
+for example.
+.It Pa POUDRIERE_ETC/poudriere.d/poudriere.conf
+The configuration can be stored in the poudriere.d directory as well.
+.It Pa POUDRIERE_ETC/poudriere.d
+This directory contains various configuration files for the different jails.
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+.Ss Bulk build of specific binary packages
+This first example provides a guide on how to use
+.Nm
+for bulk build packages.
+.Pp
+.Bq Prepare infrastructure
+.Pp
+First you have to create a jail, which will hold all the building
+infrastructure needs.
+.Pp
+.Dl "poudriere jail -c -v 13.1-RELEASE -a amd64 -j 131amd64"
+.Pp
+A jail will take approximately 3GB of space.
+.Pp
+Of course you can use another version of
+.Fx ,
+regardless of what version you are running.
+amd64 users can choose i386 arch like in this
+example:
+.Pp
+.Dl "poudriere jail -c -v 13.0-RELEASE -a i386 -j 130i386"
+.Pp
+This command will fetch and install a minimal jail, small (~400MB) so
+you can create a lot of them.
+It will install the jail under the pool
+you have chosen, at poudriere/jailname.
+.Pp
+You also need to have at least one ports tree to build packages from,
+so let us take the default configuration and create a ports tree.
+.Pp
+.Dl "poudriere ports -c"
+.Pp
+A ports tree will take approximately 4GB of space.
+.Pp
+.Bq Specify a list of ports you want to build
+.Pp
+Create a flat text file in which you put the ports you want to see
+built by
+.Nm :
+.Pp
+.Dl "echo 'sysutils/screen' > ~/pkglist"
+.Dl "echo 'editors/vim' >> ~/pkglist"
+.Pp
+Any line starting with the hash sign will be treated as a comment.
+.Pp
+.Bq Launch the bulk build
+.Pp
+Now you can launch the bulk build.
+At minimum the jail and list of packages to build must be specified.
+.Pp
+.Dl "poudriere bulk -f ~/pkglist -j 130i386"
+.Pp
+.Bq Find your packages
+.Pp
+Once the bulk build is over, you can meet your shiny new packages here:
+.Pp
+.Dl Pa /usr/local/poudriere/data/packages/130i386
+.Pp
+with 130i386 as the name of the jail.
+.Ss Test a single port
+This second example show how to use
+.Nm
+for a single port.
+Take the example of building a single port;
+.Pp
+.Dl "poudriere testport -o category/port -j myjail"
+.Pp
+all the tests will be done in myjail.
+.Pp
+It starts the jail, then mount the ports tree (nullfs), then mounts the
+package dir (poudriere/data/packages/<jailname>-<tree>-<setname>), then it mounts the
+~/ports-cvs/mybeautifulporttotest (nullfs) it builds all the dependencies
+(except runtime ones) and log it to
+poudriere/data/logs/testport/jailname/default/mybeautifulporttotest.log).
+.Pp
+If packages for the dependencies already exist, then
+.Nm
+will use them.
+.Pp
+When all the dependencies are built, packages for them are created so
+that next time it will be faster.
+.Pp
+All the dependency phase is done with PREFIX == LOCALBASE.
+.Pp
+After that it will build the port itself with LOCALBASE != PREFIX
+and log the build to
+poudriere/data/logs/testport/jailname/default/mybeautifulporttotest.log
+.Pp
+Poudriere will try to:
+install it,
+create a package from it,
+deinstall it,
+check for cruft left behind and
+propose the line to add to pkg-plist if needed.
+.Pp
+Poudriere is very easy to extend so that additional tests can be easily added.
+.Sh FLAVORS
+.Cm bulk -a
+will build all FLAVORS for each port.
+Otherwise
+.Cm bulk
+and
+.Cm testport
+use the following rules:
+.Bl -bullet -compact
+.It
+A FLAVOR of
+.Sy bar
+for port
+.Pa devel/foo
+is specified as
+.Sy devel/foo@bar .
+.El
+.Pp
+If
+.Va FLAVOR_DEFAULT_ALL
+is not set, or is set to
+.Sy no
+(the default), in
+.Pa poudriere.conf,
+then:
+.Bl -bullet -compact
+.It
+All FLAVORS for a port, without a specified FLAVOR, will be built
+using the FLAVOR
+.Sy all :
+.Sy devel/foo@all .
+.It
+The first (default) FLAVOR for a port is built by not specifying a FLAVOR:
+.Sy devel/foo .
+.El
+.Pp
+If
+.Va FLAVOR_DEFAULT_ALL
+is set to
+.Sy yes
+in
+.Pa poudriere.conf,
+then:
+.Bl -bullet -compact
+.It
+All FLAVORS for a port, without a specified FLAVOR, will be built:
+.Sy devel/foo .
+.It
+The first (default) FLAVOR for a port is built by specifying the FLAVOR
+.Sy - :
+.Sy devel/foo@-
+.El
+.Pp
+.Ss Known issues
+.Bl -bullet -compat
+.It
+An invalid FLAVOR for a port will cause an error during dependency calculation.
+.El
+.Sh CUSTOMIZATION
+For bulk building, you can customize binary packages produced by
+.Nm
+by changing build options port by port, and you can also specify
+building directives in a make.conf file.
+.Ss Custom build options
+Before building a package,
+.Nm
+can mount a directory containing option files if available.
+.Nm
+will check for any of these directories in this order:
+.Pp
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-<tree>-<setname>-options
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-<setname>-options
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-<tree>-options
+.Dl Pa /usr/local/etc/poudriere.d/<tree>-<setname>-options
+.Dl Pa /usr/local/etc/poudriere.d/<setname>-options
+.Dl Pa /usr/local/etc/poudriere.d/<tree>-options
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-options
+.Dl Pa /usr/local/etc/poudriere.d/options
+.Pp
+If a directory with this name exists, it is null-mounted into the
+.Pa /var/db/ports/
+directory of the jail, thus allowing to build package
+with custom OPTIONS.
+.Pp
+The
+.Cm options
+subcommand can be used to easily configure options in the correct directory.
+.Pp
+This directory has the usual layout for options: it contains one directory per
+port (the name of the port) containing an 'options' file with lines similar to:
+.Pp
+.Dl WITH_FOO=true
+.Dl WITHOUT_BAR=true
+.Pp
+As a starter, you may want to copy an existing
+.Pa /var/db/ports/
+to
+.Pa /usr/local/etc/poudriere.d/options .
+.Ss Blacklist ports
+You can also specify a blacklist which will disallow the lists port origins
+from building on the matched jail.
+.Pp
+FLAVOR handling is different than described in the
+.Sx FLAVORS
+section.
+.Bl -tag -width "devel/foo@bar" -compact
+.It Cm devel/foo
+Blacklist every FLAVOR.
+.It Cm devel/foo@all
+Blacklist every FLAVOR.
+.It Cm devel/foo@-
+Blacklist only the default FLAVOR.
+.It Cm devel/foo@bar
+Blacklist only the
+.Sy bar
+FLAVOR.
+.El
+.Pp
+Any of the following are allowed and will all be used in the order shown:
+.Pp
+.Dl Pa /usr/local/etc/poudriere.d/blacklist
+.Dl Pa /usr/local/etc/poudriere.d/<setname>-blacklist
+.Dl Pa /usr/local/etc/poudriere.d/<tree>-blacklist
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-blacklist
+.Dl Pa /usr/local/etc/poudriere.d/<tree>-<setname>-blacklist
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-<tree>-blacklist
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-<setname>-blacklist
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-<tree>-<setname>-blacklist
+.Pp
+If QEMU is being used then a special qemu blacklist is also loaded.
+.Dl Pa /usr/local/etc/poudriere.d/qemu-blacklist
+.Ss Create optional poudriere.conf
+You can also specify an optional poudriere.conf that is pulled in
+depending on the build.
+Any of the following are allowed and will all be used in the order shown:
+.Pp
+.Dl Pa /usr/local/etc/poudriere.d/poudriere.conf
+.Dl Pa /usr/local/etc/poudriere.d/<setname>-poudriere.conf
+.Dl Pa /usr/local/etc/poudriere.d/<tree>-poudriere.conf
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-poudriere.conf
+.Dl Pa /usr/local/etc/poudriere.d/<tree>-<setname>-poudriere.conf
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-<tree>-poudriere.conf
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-<setname>-poudriere.conf
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-<tree>-<setname>-poudriere.conf
+.Ss Create optional make.conf
+You can also specify a global make.conf which will be used for all the
+jails.
+Any of the following are allowed and will all be used in the order shown:
+.Pp
+.Dl Pa /usr/local/etc/poudriere.d/make.conf
+.Dl Pa /usr/local/etc/poudriere.d/<setname>-make.conf
+.Dl Pa /usr/local/etc/poudriere.d/<tree>-make.conf
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-make.conf
+.Dl Pa /usr/local/etc/poudriere.d/<tree>-<setname>-make.conf
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-<tree>-make.conf
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-<setname>-make.conf
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-<tree>-<setname>-make.conf
+.Dl Pa /usr/local/etc/poudriere.d/hooks/plugins/<plugin>/make.conf
+.Ss Create optional src.conf
+You can also specify a global src.conf which will be used for building
+jails with the
+.Cm jail -c
+subcommand.
+Any of the following are allowed and will all be used in the order shown:
+.Pp
+.Dl Pa /usr/local/etc/poudriere.d/src.conf
+.Dl Pa /usr/local/etc/poudriere.d/<setname>-src.conf
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-src.conf
+.Ss Create optional src-env.conf
+You can also specify a global src-env.conf which will be used for building
+jails with the
+.Cm jail -c
+subcommand.
+Any of the following are allowed and will all be used in the order shown:
+.Pp
+.Dl Pa /usr/local/etc/poudriere.d/src-env.conf
+.Dl Pa /usr/local/etc/poudriere.d/<setname>-src-env.conf
+.Dl Pa /usr/local/etc/poudriere.d/<jailname>-src-env.conf
+.Ss Hooks
+Hook scripts may be loaded in any of the following paths:
+.Pp
+.Dl Pa /usr/local/etc/poudriere.d/hooks/<hook>.sh
+.Dl Pa /usr/local/etc/poudriere.d/hooks/plugins/<plugin>/<hook>.sh
+.Pp
+For specific hook documentation see:
+.Lk https://github.com/freebsd/poudriere/wiki/hooks
+.Sh SEE ALSO
+.Xr jail 8 ,
+.Xr poudriere-bulk 8 ,
+.Xr poudriere-distclean 8 ,
+.Xr poudriere-image 8 ,
+.Xr poudriere-jail 8 ,
+.Xr poudriere-logclean 8 ,
+.Xr poudriere-options 8 ,
+.Xr poudriere-pkgclean 8 ,
+.Xr poudriere-ports 8 ,
+.Xr poudriere-queue 8 ,
+.Xr poudriere-status 8 ,
+.Xr poudriere-testport 8 ,
+.Xr poudriere-version 8
+.Sh BUGS
+In case of bugs, feel free to file a report:
+.Pp
+.Lk https://github.com/freebsd/poudriere/issues
+.Sh AUTHORS
+.An Baptiste Daroussin Aq bapt@FreeBSD.org
+.An Bryan Drewery Aq bdrewery@FreeBSD.org

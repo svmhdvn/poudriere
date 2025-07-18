@@ -1,0 +1,139 @@
+.\" Copyright (c) 2012 Baptiste Daroussin <bapt@FreeBSD.org>
+.\" Copyright (c) 2012-2014 Bryan Drewery <bdrewery@FreeBSD.org>
+.\" Copyright (c) 2018 SRI International
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD$
+.\"
+.\" Note: The date here should be updated whenever a non-trivial
+.\" change is made to the manual page.
+.Dd June 6, 2022
+.Dt POUDRIERE-PKGCLEAN 8
+.Os
+.Sh NAME
+.Nm "poudriere pkgclean"
+.Nd cleanup old or unwanted packages
+.Sh SYNOPSIS
+.Nm
+.Ar subcommand
+.Op Ar options
+.Nm
+.Op Ar options
+.Ar origin
+.Op Ar origin2 Op Ar ...
+.Sh DESCRIPTION
+This command is used to delete all packages not specified to build.
+By default packages
+.Em not listed
+will be deleted;
+Listed packages, and their dependencies, will be kept.
+.Pp
+If
+.Fl C
+is specified then packages listed on the command line will be deleted
+rather than kept.
+Their orphaned dependencies will not be deleted.
+A second run with a full list of wanted packages is needed to
+cleanup orphaned dependencies.
+.Pp
+Either a subcommand or a list of port origins must be supplied.
+.Sh SUBCOMMANDS
+.Bl -tag -width "-f conffile"
+.It Fl A
+Remove all packages.
+.It Fl a
+Keep all known ports in the tree.
+.It Fl f Ar file
+Absolute path to a file which contains the list of ports to keep.
+Ports must be specified in the form
+.Ar category/port
+and shell-style comments are allowed.
+Multiple
+.Fl f Ar file
+arguments may be specified at once.
+.El
+.Sh OPTIONS
+.Bl -tag -width "-f conffile"
+.It Fl C
+Delete the listed packages rather than keep them.
+This can be used to delete specific packages that need to be rebuilt
+while keeping them in the port list file.
+.Fl r
+can be specified to delete reverse dependencies as well.
+.It Fl J Ar number
+This argument specifies how many
+.Ar number
+jobs will run in parallel for gathering package information.
+.It Fl j Ar name
+Jail to use for the packages to inspect.
+.It Fl N
+Do not build package repository when done cleaning.
+.It Fl n
+Dry run, do not actually delete anything.
+.It Fl O Ar overlay
+Specify an extra ports tree to use as an overlay.
+Multiple
+.Fl O Ar overlay
+arguments may be specified to stack them.
+.Pp
+These overlays should be setup with
+.Xr poudriere-ports 8 .
+.It Fl p Ar tree
+Specifies which ports
+.Ar tree
+to use.
+.Pq Default: Dq Li default
+.It Fl r
+When
+.Fl C
+is specified then all reverse dependencies will be deleted as well.
+This can be used to later force rebuild anything depending on the listed
+packages.
+.It Fl R
+Also clean restricted packages.
+.It Fl u
+Force rebuilding and signing the repo, even if no change was made.
+.It Fl v
+This will show more information during the build.
+Specify twice to enable debug output.
+.It Fl y
+Assume yes, do not confirm and just delete the files.
+.It Fl z Ar set
+SET to use for the packages to inspect.
+.El
+.Sh SEE ALSO
+.Xr poudriere 8 ,
+.Xr poudriere-bulk 8 ,
+.Xr poudriere-distclean 8 ,
+.Xr poudriere-image 8 ,
+.Xr poudriere-jail 8 ,
+.Xr poudriere-logclean 8 ,
+.Xr poudriere-ports 8 ,
+.Xr poudriere-queue 8 ,
+.Xr poudriere-status 8 ,
+.Xr poudriere-testport 8 ,
+.Xr poudriere-version 8
+.Sh AUTHORS
+.An Baptiste Daroussin Aq bapt@FreeBSD.org
+.An Bryan Drewery Aq bdrewery@FreeBSD.org
