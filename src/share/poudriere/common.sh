@@ -2904,7 +2904,7 @@ enter_interactive() {
 		cat >> "${MASTERMNT:?}/etc/motd" <<-EOF
 		ORIGIN:			${port:?}
 		PORTDIR:		${portdir:?}
-		WRKDIR:			$(injail make -C "${portdir:?}" -V WRKDIR)
+		WRKDIR:			$(injail make -C "${portdir:?}" ${flavor:+FLAVOR=${flavor}} -V WRKDIR)
 		EOF
 		case "${flavor:+set}" in
 		set)
