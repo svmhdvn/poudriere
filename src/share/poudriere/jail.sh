@@ -760,11 +760,16 @@ install_from_vcs() {
 	if [ ${UPDATE} -eq 0 ]; then
 		case ${METHOD} in
 		svn*)
-			msg_n "Checking out the sources with ${METHOD}..."
+			# !! Any changes here should be considered for ports.sh too.
+			if [ -n "${quiet}" ]; then
+				msg_n "Checking out the sources with ${METHOD}..."
+			else
+				msg "Checking out the sources with ${METHOD}..."
+			fi
 			${SVN_CMD} ${quiet} checkout \
 			    ${SVN_FULLURL}/${VERSION} ${SRC_BASE} || \
 			    err 1 " fail"
-			echo " done"
+			[ -n "${quiet}" ] && echo " done"
 			if [ -n "${SRCPATCHFILE}" ]; then
 				msg_n "Patching the sources with ${SRCPATCHFILE}"
 				${SVN_CMD} ${quiet} patch ${SRCPATCHFILE} \
@@ -777,33 +782,46 @@ install_from_vcs() {
 			if [ -n "${SRCPATCHFILE}" ]; then
 				err 1 "Patch files not supported with git, please use feature branches"
 			fi
-			msg_n "Checking out the sources with ${METHOD}..."
+			if [ -n "${quiet}" ]; then
+				msg_n "Checking out the sources with ${METHOD}..."
+			else
+				msg "Checking out the sources with ${METHOD}..."
+			fi
 			${GIT_CMD} clone ${GIT_DEPTH} ${quiet} \
 			    ${VERSION:+-b ${VERSION}} ${GIT_FULLURL} \
 			    ${SRC_BASE} || \
 			    err 1 " fail"
-			echo " done"
+			[ -n "${quiet}" ] && echo " done"
 			# No support for patches, using feature branches is recommanded"
 			;;
 		esac
 	else
 		case ${METHOD} in
 		svn*)
-			msg_n "Updating the sources with ${METHOD}..."
+			# !! Any changes here should be considered for ports.sh too.
+			if [ -n "${quiet}" ]; then
+				msg_n "Updating the sources with ${METHOD}..."
+			else
+				msg "Updating the sources with ${METHOD}..."
+			fi
 			${SVN_CMD} upgrade ${SRC_BASE} 2>/dev/null || :
 			${SVN_CMD} ${quiet} update -r ${TORELEASE:-head} ${SRC_BASE} || err 1 " fail"
-			echo " done"
+			[ -n "${quiet}" ] && echo " done"
 			;;
 		git*)
 			# !! Any changes here should be considered for ports.sh too.
-			msg_n "Updating the sources with ${METHOD}..."
+			if [ -n "${quiet}" ]; then
+				msg_n "Updating the sources with ${METHOD}..."
+			else
+				msg "Updating the sources with ${METHOD}..."
+			fi
 			${GIT_CMD} -C ${SRC_BASE} pull --rebase ${quiet} || \
 			    err 1 " fail"
 			if [ -n "${TORELEASE}" ]; then
 				${GIT_CMD} -C ${SRC_BASE} checkout \
 				    ${quiet} "${TORELEASE}" || err 1 " fail"
 			fi
-			echo " done"
+			[ -n "${quiet}" ] && echo " done"
 			;;
 		esac
 	fi
