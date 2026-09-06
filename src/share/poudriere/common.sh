@@ -5737,7 +5737,7 @@ build_port() {
 			job_build_status "stage-qa" "${originspec}" "${pkgname}"
 			if ! cleanenv injail /usr/bin/env DEVELOPER=1 \
 			    ${PORT_FLAGS:=-S "${PORT_FLAGS}"} \
-			    /usr/bin/make -C ${portdir} ${MAKE_ARGS} \
+			    /usr/bin/make -C ${portdir} ${flavor:+FLAVOR=${flavor}} ${MAKE_ARGS} \
 			    stage-qa; then
 				msg "Error: stage-qa failures detected"
 				if [ "${PORTTESTING_FATAL}" != "no" ]; then
@@ -5751,7 +5751,7 @@ build_port() {
 			if ! cleanenv injail /usr/bin/env \
 			    ${PORT_FLAGS:+-S "${PORT_FLAGS}"} \
 			    DEVELOPER=1 \
-			    /usr/bin/make -C ${portdir} ${MAKE_ARGS} \
+			    /usr/bin/make -C ${portdir} ${flavor:+FLAVOR=${flavor}} ${MAKE_ARGS} \
 			    check-plist; then
 				msg "Error: check-plist failures detected"
 				if [ "${PORTTESTING_FATAL}" != "no" ]; then
